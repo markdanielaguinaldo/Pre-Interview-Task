@@ -8,7 +8,7 @@ namespace api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    
+
     public class UserController : ControllerBase
     {
 
@@ -35,12 +35,17 @@ namespace api.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Admin")] 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create(User user)
         {
             using (var connection = new SqlConnection(_configuration?.GetConnectionString("DefaultConnection")))
             {
-                var sql = "INSERT INTO [Users] ([Username], [Password], [IsAdmin]) VALUES (@Username, @Password, @IsAdmin)";
+                // Generate a salt and hash the password with it
+                string salt = PasswordHasher.GenerateSalt();
+                user.Password = PasswordHasher.HashPassword(user.Password, salt);
+                user.Salt = salt;
+
+                var sql = "INSERT INTO [Users] ([Username], [Password], [IsAdmin], [Salt]) VALUES (@Username, @Password, @IsAdmin, @Salt)";
                 var result = await connection.ExecuteAsync(sql, user);
                 return result > 0 ? Ok(user) : BadRequest();
             }
@@ -53,7 +58,7 @@ namespace api.Controllers
             using (var connection = new SqlConnection(_configuration?.GetConnectionString("DefaultConnection")))
             {
                 var sql = "UPDATE [Users] SET [Username] = @Username, [Password] = @Password, [IsAdmin] = @IsAdmin WHERE [Id] = @Id";
-                var result = await connection.ExecuteAsync(sql, new { Id = id, user.Username, user.Password, user.isAdmin});
+                var result = await connection.ExecuteAsync(sql, new { Id = id, user.Username, user.Password, user.isAdmin });
 
                 return result > 0 ? Ok(user) : BadRequest();
             }

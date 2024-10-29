@@ -7,5 +7,6 @@
         public string Password { get; set; }
         public bool? isAdmin { get; set; }
 		public string? Company { get; set; }
-	}
+        public string? Salt { get; set; }
+    }
 }

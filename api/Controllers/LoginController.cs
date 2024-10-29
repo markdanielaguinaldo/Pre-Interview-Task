@@ -22,18 +22,21 @@ namespace api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login([FromBody]User user)
+        public async Task<IActionResult> Login([FromBody] User user)
         {
             using (var connection = new SqlConnection(_configuration?.GetConnectionString("DefaultConnection")))
             {
-                var sql = "SELECT [ID] FROM [Users] WHERE [Username] = @Username AND [Password] = @Password";
-                var dbUser = await connection.QueryFirstOrDefaultAsync<User>(sql, new { user.Username, user.Password });
+                var sql = "SELECT [ID], [Username], [Password], [Salt], [IsAdmin] FROM [Users] WHERE [Username] = @Username";
+                var dbUser = await connection.QueryFirstOrDefaultAsync<User>(sql, new { user.Username });
 
                 if (dbUser != null && !string.IsNullOrEmpty(dbUser.Username))
                 {
-
-                    var token = GenerateJwtToken(dbUser.Username, dbUser.isAdmin!.Value);
-                    return Ok(new { token = token });
+                    var hashedPassword = PasswordHasher.HashPassword(user.Password, dbUser.Salt!);
+                    if (hashedPassword == dbUser.Password)
+                    {
+                        var token = GenerateJwtToken(dbUser.Username, dbUser.isAdmin!.Value);
+                        return Ok(new { token = token });   
+                    }
                 }
                 return Unauthorized();
             }
